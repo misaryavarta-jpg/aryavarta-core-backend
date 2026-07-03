@@ -20,12 +20,12 @@ GROQ_API_KEY = str(os.environ.get("GROQ_API_KEY", "")).strip()
 SUPABASE_URL = str(os.environ.get("SUPABASE_URL", "")).strip()
 SUPABASE_KEY = str(os.environ.get("SUPABASE_KEY", "")).strip()
 
-# Back to stable, official high-speed Groq SDK client
+# Initialize connection frameworks securely
 groq_client = Groq(api_key=GROQ_API_KEY)
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Use the latest active, high-tier production model on Groq's cloud network
-PRODUCTION_MODEL = "llama-3.3-70b-specdec"
+# FIXED: Swapped out deprecated specdec ID for the standard long-term production ID
+PRODUCTION_MODEL = "llama-3.3-70b-versatile"
 
 class TicketInput(BaseModel):
     client_name: str
@@ -54,9 +54,9 @@ def handle_site_engineer_service(data: TicketInput):
             model=PRODUCTION_MODEL,
             temperature=0.1
         )
-        ai_tip = completion.choices[0].message.content
+        ai_tip = completion.choices.message.content
 
-        # Direct insert matching the brand new site_tickets database schema format
+        # Database rows insertion
         supabase.table("site_tickets").insert([
             {
                 "client_name": str(data.client_name),
@@ -82,7 +82,7 @@ def handle_sundry_service(data: SundryInput):
             model=PRODUCTION_MODEL,
             temperature=0.0
         )
-        ai_structured_bom = completion.choices[0].message.content
+        ai_structured_bom = completion.choices.message.content
 
         supabase.table("sundry_orders").insert([
             {
@@ -94,7 +94,8 @@ def handle_sundry_service(data: SundryInput):
         
         return {"status": "success", "structured_list": ai_structured_bom}
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        error_details = f"System Crash: {str(e)} | Trace: {traceback.format_exc()}"
+        raise HTTPException(status_code=400, detail=error_details)
 
 @app.post("/api/turnkey-panel")
 def handle_turnkey_panel_service(data: PanelInput):
@@ -107,7 +108,7 @@ def handle_turnkey_panel_service(data: PanelInput):
             model=PRODUCTION_MODEL,
             temperature=0.2
         )
-        panel_specs = completion.choices[0].message.content
+        panel_specs = completion.choices.message.content
 
         supabase.table("panel_designs").insert([
             {
@@ -119,4 +120,5 @@ def handle_turnkey_panel_service(data: PanelInput):
         
         return {"status": "success", "panel_blueprint": panel_specs}
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        error_details = f"System Crash: {str(e)} | Trace: {traceback.format_exc()}"
+        raise HTTPException(status_code=400, detail=error_details)
