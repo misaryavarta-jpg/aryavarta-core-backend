@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from groq import Groq
 from supabase import create_client, Client
 
-app = FastAPI(title="Aryavarta Explicit Path Engine", redirect_slashes=False)
+app = FastAPI(title="Aryavarta Production System", redirect_slashes=False)
 
 app.add_middleware(
     CORSMiddleware,
@@ -55,14 +55,12 @@ def handle_site_engineer_service(data: TicketInput):
         )
         ai_tip = completion.choices[0].message.content
 
-        # FIXED: Added explicit schema mapping override
-        supabase.schema("public").table("site_tickets").insert([
-            {
-                "client_name": str(data.client_name),
-                "fault_description": str(data.fault_description),
-                "ai_diagnostic_tip": str(ai_tip)
-            }
-        ]).execute()
+        # Standard direct table interaction matching structural update checks
+        supabase.table("site_tickets").insert({
+            "client_name": str(data.client_name),
+            "fault_description": str(data.fault_description),
+            "ai_diagnostic_tip": str(ai_tip)
+        }).execute()
         
         return {"status": "success", "ai_diagnostic": ai_tip}
     except Exception as e:
@@ -83,14 +81,11 @@ def handle_sundry_service(data: SundryInput):
         )
         ai_structured_bom = completion.choices[0].message.content
 
-        # FIXED: Added explicit schema mapping override
-        supabase.schema("public").table("sundry_orders").insert([
-            {
-                "client_name": str(data.client_name),
-                "raw_whatsapp_text": str(data.raw_whatsapp_text),
-                "structured_bom": str(ai_structured_bom)
-            }
-        ]).execute()
+        supabase.table("sundry_orders").insert({
+            "client_name": str(data.client_name),
+            "raw_whatsapp_text": str(data.raw_whatsapp_text),
+            "structured_bom": str(ai_structured_bom)
+        }).execute()
         
         return {"status": "success", "structured_list": ai_structured_bom}
     except Exception as e:
@@ -111,14 +106,11 @@ def handle_turnkey_panel_service(data: PanelInput):
         )
         panel_specs = completion.choices[0].message.content
 
-        # FIXED: Added explicit schema mapping override
-        supabase.schema("public").table("panel_designs").insert([
-            {
-                "client_name": str(data.client_name),
-                "raw_requirements": str(data.raw_requirements),
-                "generated_specifications": str(panel_specs)
-            }
-        ]).execute()
+        supabase.table("panel_designs").insert({
+            "client_name": str(data.client_name),
+            "raw_requirements": str(data.raw_requirements),
+            "generated_specifications": str(panel_specs)
+        }).execute()
         
         return {"status": "success", "panel_blueprint": panel_specs}
     except Exception as e:
