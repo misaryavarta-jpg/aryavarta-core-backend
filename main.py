@@ -1,12 +1,12 @@
 import os
 import traceback
+import psycopg2
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from groq import Groq
 
-# Initialize high-speed localized api framework
-app = FastAPI(title="Aryavarta High Speed Zero-Storage Engine", redirect_slashes=False)
+app = FastAPI(title="Aryavarta Direct Raw Database Engine", redirect_slashes=False)
 
 app.add_middleware(
     CORSMiddleware,
@@ -18,6 +18,10 @@ app.add_middleware(
 
 GROQ_API_KEY = str(os.environ.get("GROQ_API_KEY", "")).strip()
 groq_client = Groq(api_key=GROQ_API_KEY)
+
+# CRITICAL DATABASE BYPASS CONNECTOR: Paste your exact database URI string from Step 2 here
+# Make sure your real database project password replaces [YOUR-PASSWORD-HERE]
+DB_CONNECTION_URI = "postgresql://postgres:[YOUR-PASSWORD]@db.spmdcwhwqzaibhgdrzdx.supabase.co:5432/postgres"
 
 PRODUCTION_MODEL = "llama-3.3-70b-versatile"
 
@@ -35,7 +39,7 @@ class PanelInput(BaseModel):
 
 @app.get("/")
 def home():
-    return {"status": "online", "mode": "direct_ai_response"}
+    return {"status": "online", "mode": "raw_db_writing_active"}
 
 @app.post("/api/site-engineer")
 @app.post("/api/site-engineer/")
@@ -50,10 +54,19 @@ def handle_site_engineer_service(data: TicketInput):
             temperature=0.1
         )
         ai_tip = completion.choices[0].message.content
+
+        # Bypasses URL path routing endpoints by connecting straight into the DB port
+        conn = psycopg2.connect(DB_CONNECTION_URI)
+        cursor = conn.cursor()
+        insert_query = "INSERT INTO public.site_tickets (client_name, fault_description, ai_diagnostic_tip) VALUES (%s, %s, %s);"
+        cursor.execute(insert_query, (str(data.client_name), str(data.fault_description), str(ai_tip)))
+        conn.commit()
+        cursor.close()
+        conn.close()
+
         return {"status": "success", "ai_diagnostic": ai_tip}
-        
     except Exception as e:
-        error_details = f"AI Generation Crash: {str(e)} | Trace: {traceback.format_exc()}"
+        error_details = f"Storage Engine Crash: {str(e)} | Trace: {traceback.format_exc()}"
         raise HTTPException(status_code=400, detail=error_details)
 
 @app.post("/api/sundry-procurement")
@@ -69,10 +82,18 @@ def handle_sundry_service(data: SundryInput):
             temperature=0.0
         )
         ai_structured_bom = completion.choices[0].message.content
+
+        conn = psycopg2.connect(DB_CONNECTION_URI)
+        cursor = conn.cursor()
+        insert_query = "INSERT INTO public.sundry_orders (client_name, raw_whatsapp_text, structured_bom) VALUES (%s, %s, %s);"
+        cursor.execute(insert_query, (str(data.client_name), str(data.raw_whatsapp_text), str(ai_structured_bom)))
+        conn.commit()
+        cursor.close()
+        conn.close()
+
         return {"status": "success", "structured_list": ai_structured_bom}
-        
     except Exception as e:
-        error_details = f"AI Generation Crash: {str(e)} | Trace: {traceback.format_exc()}"
+        error_details = f"Storage Engine Crash: {str(e)} | Trace: {traceback.format_exc()}"
         raise HTTPException(status_code=400, detail=error_details)
 
 @app.post("/api/turnkey-panel")
@@ -88,8 +109,16 @@ def handle_turnkey_panel_service(data: PanelInput):
             temperature=0.2
         )
         panel_specs = completion.choices[0].message.content
+
+        conn = psycopg2.connect(DB_CONNECTION_URI)
+        cursor = conn.cursor()
+        insert_query = "INSERT INTO public.panel_designs (client_name, raw_requirements, generated_specifications) VALUES (%s, %s, %s);"
+        cursor.execute(insert_query, (str(data.client_name), str(data.raw_requirements), str(panel_specs)))
+        conn.commit()
+        cursor.close()
+        conn.close()
+
         return {"status": "success", "panel_blueprint": panel_specs}
-        
     except Exception as e:
-        error_details = f"AI Generation Crash: {str(e)} | Trace: {traceback.format_exc()}"
+        error_details = f"Storage Engine Crash: {str(e)} | Trace: {traceback.format_exc()}"
         raise HTTPException(status_code=400, detail=error_details)
