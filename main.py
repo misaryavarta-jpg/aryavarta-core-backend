@@ -16,10 +16,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Extract and aggressively sanitize keys
+# Extract and sanitize environmental context variables
 GROQ_API_KEY = str(os.environ.get("GROQ_API_KEY", "")).strip()
 SUPABASE_URL = str(os.environ.get("SUPABASE_URL", "")).strip()
 SUPABASE_KEY = str(os.environ.get("SUPABASE_KEY", "")).strip()
+
+# Target active, high-speed production model provided by Groq
+PRODUCTION_MODEL = "openai/gpt-oss-20b"
 
 class TicketInput(BaseModel):
     client_name: str
@@ -45,15 +48,9 @@ def home():
 @app.post("/api/site-engineer")
 def handle_site_engineer_service(data: TicketInput):
     try:
-        # Pre-execution key checks
-        if not GROQ_API_KEY or len(GROQ_API_KEY) < 10:
-            raise ValueError("GROQ_API_KEY is missing, empty, or unreadable inside Render environment settings.")
-        if not SUPABASE_URL or "supabase.co" not in SUPABASE_URL:
-            raise ValueError("SUPABASE_URL environment variable is missing or formatted incorrectly.")
-        if not SUPABASE_KEY or len(SUPABASE_KEY) < 20:
-            raise ValueError("SUPABASE_KEY environment variable is empty or completely unreadable.")
-
-        # Initialize clients on-demand inside the endpoint to capture initialization crashes
+        if not GROQ_API_KEY:
+            raise ValueError("GROQ_API_KEY token setting is missing or empty inside Render parameters.")
+        
         g_client = Groq(api_key=GROQ_API_KEY)
         s_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -62,12 +59,11 @@ def handle_site_engineer_service(data: TicketInput):
                 {"role": "system", "content": "Provide 3 concise panel troubleshooting tips based on the issue."},
                 {"role": "user", "content": data.fault_description}
             ],
-            model="llama3-8b-8192",
+            model=PRODUCTION_MODEL,
             temperature=0.1
         )
         ai_tip = completion.choices.message.content
 
-        # Execute insertion matching both old and new array-standard syntaxes
         s_client.table("site_tickets").insert([
             {
                 "client_name": str(data.client_name),
@@ -79,15 +75,12 @@ def handle_site_engineer_service(data: TicketInput):
         return {"status": "success", "ai_diagnostic": ai_tip}
 
     except Exception as e:
-        # CRITICAL FIX: Intercept the 500 error and output the EXACT systemic error text message back to the frontend console
         error_details = f"System Crash: {str(e)} | Trace: {traceback.format_exc()}"
         raise HTTPException(status_code=400, detail=error_details)
 
 @app.post("/api/sundry-procurement")
 def handle_sundry_service(data: SundryInput):
     try:
-        if not GROQ_API_KEY or not SUPABASE_URL:
-            raise ValueError("Missing essential service connection credentials in Render.")
         g_client = Groq(api_key=GROQ_API_KEY)
         s_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -96,7 +89,7 @@ def handle_sundry_service(data: SundryInput):
                 {"role": "system", "content": "Convert components into a clean formatted string table list."},
                 {"role": "user", "content": data.raw_whatsapp_text}
             ],
-            model="llama3-8b-8192",
+            model=PRODUCTION_MODEL,
             temperature=0.0
         )
         ai_structured_bom = completion.choices.message.content
@@ -116,8 +109,6 @@ def handle_sundry_service(data: SundryInput):
 @app.post("/api/turnkey-panel")
 def handle_turnkey_panel_service(data: PanelInput):
     try:
-        if not GROQ_API_KEY or not SUPABASE_URL:
-            raise ValueError("Missing essential service connection credentials in Render.")
         g_client = Groq(api_key=GROQ_API_KEY)
         s_client: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -126,7 +117,7 @@ def handle_turnkey_panel_service(data: PanelInput):
                 {"role": "system", "content": "Provide basic panel enclosure specifications and ratings."},
                 {"role": "user", "content": data.raw_requirements}
             ],
-            model="llama3-8b-8192",
+            model=PRODUCTION_MODEL,
             temperature=0.2
         )
         panel_specs = completion.choices.message.content
