@@ -3,7 +3,7 @@ import traceback
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from openai import OpenAI
+from groq import Groq
 from supabase import create_client, Client
 
 app = FastAPI(title="Aryavarta Fixed Responses Engine")
@@ -20,12 +20,12 @@ GROQ_API_KEY = str(os.environ.get("GROQ_API_KEY", "")).strip()
 SUPABASE_URL = str(os.environ.get("SUPABASE_URL", "")).strip()
 SUPABASE_KEY = str(os.environ.get("SUPABASE_KEY", "")).strip()
 
-# Initialize via the native OpenAI compatibility client required for GPT-OSS models
-groq_client = OpenAI(
-    api_key=GROQ_API_KEY,
-    base_url="https://api.groq.com/openai/v1"
-)
+# Back to stable, official high-speed Groq SDK client
+groq_client = Groq(api_key=GROQ_API_KEY)
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# Use the latest active, high-tier production model on Groq's cloud network
+PRODUCTION_MODEL = "llama-3.3-70b-specdec"
 
 class TicketInput(BaseModel):
     client_name: str
@@ -46,18 +46,22 @@ def home():
 @app.post("/api/site-engineer")
 def handle_site_engineer_service(data: TicketInput):
     try:
-        # Fixed: Using responses.create with correct .output_text attribute extraction
-        response = groq_client.responses.create(
-            model="openai/gpt-oss-20b",
-            input=f"System Instruction: You are an industrial panel diagnostic expert. Provide 3 quick, concise troubleshooting checks for a field technician. User Issue: {data.fault_description}"
+        completion = groq_client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": "You are an industrial panel diagnostic expert. Provide 3 quick, concise troubleshooting checks for a field technician based on the issue description."},
+                {"role": "user", "content": data.fault_description}
+            ],
+            model=PRODUCTION_MODEL,
+            temperature=0.1
         )
-        ai_tip = str(response.output_text)
+        ai_tip = completion.choices[0].message.content
 
+        # Direct insert matching the brand new site_tickets database schema format
         supabase.table("site_tickets").insert([
             {
                 "client_name": str(data.client_name),
                 "fault_description": str(data.fault_description),
-                "ai_diagnostic_tip": ai_tip
+                "ai_diagnostic_tip": str(ai_tip)
             }
         ]).execute()
         
@@ -70,17 +74,21 @@ def handle_site_engineer_service(data: TicketInput):
 @app.post("/api/sundry-procurement")
 def handle_sundry_service(data: SundryInput):
     try:
-        response = groq_client.responses.create(
-            model="openai/gpt-oss-20b",
-            input=f"System Instruction: Read the unstructured message containing electrical components and convert it into a strictly formatted table list detailing item, spec and quantity. Message: {data.raw_whatsapp_text}"
+        completion = groq_client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": "Read the unstructured message containing electrical components and convert it into a clean formatted string table list detailing item, spec and quantity."},
+                {"role": "user", "content": data.raw_whatsapp_text}
+            ],
+            model=PRODUCTION_MODEL,
+            temperature=0.0
         )
-        ai_structured_bom = str(response.output_text)
+        ai_structured_bom = completion.choices[0].message.content
 
         supabase.table("sundry_orders").insert([
             {
                 "client_name": str(data.client_name),
                 "raw_whatsapp_text": str(data.raw_whatsapp_text),
-                "structured_bom": ai_structured_bom
+                "structured_bom": str(ai_structured_bom)
             }
         ]).execute()
         
@@ -91,17 +99,21 @@ def handle_sundry_service(data: SundryInput):
 @app.post("/api/turnkey-panel")
 def handle_turnkey_panel_service(data: PanelInput):
     try:
-        response = groq_client.responses.create(
-            model="openai/gpt-oss-20b",
-            input=f"System Instruction: Provide a brief engineering overview detailing the panel enclosure protection tier (IP55/IP65) and suggested component parameters. Criteria: {data.raw_requirements}"
+        completion = groq_client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": "Provide a brief engineering overview detailing the panel enclosure protection tier (IP55/IP65) and suggested component parameters based on requirements."},
+                {"role": "user", "content": data.raw_requirements}
+            ],
+            model=PRODUCTION_MODEL,
+            temperature=0.2
         )
-        panel_specs = str(response.output_text)
+        panel_specs = completion.choices[0].message.content
 
         supabase.table("panel_designs").insert([
             {
                 "client_name": str(data.client_name),
                 "raw_requirements": str(data.raw_requirements),
-                "generated_specifications": panel_specs
+                "generated_specifications": str(panel_specs)
             }
         ]).execute()
         
