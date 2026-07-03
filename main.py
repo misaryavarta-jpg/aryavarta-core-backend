@@ -55,7 +55,7 @@ def handle_site_engineer_service(data: TicketInput):
         )
         ai_tip = completion.choices[0].message.content
 
-        # Standard direct table interaction matching structural update checks
+        # Strict public string data row mapping insertion
         supabase.table("site_tickets").insert({
             "client_name": str(data.client_name),
             "fault_description": str(data.fault_description),
