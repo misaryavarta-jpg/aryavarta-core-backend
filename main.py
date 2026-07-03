@@ -1,3 +1,48 @@
+import os
+from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
+from groq import Groq
+from supabase import create_client, Client
+
+# Initialize the central app framework
+app = FastAPI(title="Aryavarta Automation Core Engine")
+
+# Permit web dashboard connections across standard ports
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+# Initialize free third-party API configurations safely from environments
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
+SUPABASE_URL = os.environ.get("SUPABASE_URL")
+SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
+
+groq_client = Groq(api_key=GROQ_API_KEY)
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+# Define incoming structural data definitions
+class TicketInput(BaseModel):
+    client_name: str
+    fault_description: str
+
+class SundryInput(BaseModel):
+    client_name: str
+    raw_whatsapp_text: str
+
+class PanelInput(BaseModel):
+    client_name: str
+    raw_requirements: str
+
+@app.get("/")
+def health_check():
+    """ Keeps the free-tier server active and responsive """
+    return {"status": "online", "message": "Aryavarta systems running smoothly."}
+
 # =====================================================================
 # SERVICE 1: SITE ENGINEER ROUTE WITH INTELLIGENT FIELD CO-PILOT
 # =====================================================================
@@ -24,7 +69,7 @@ def handle_site_engineer_service(data: TicketInput):
             "fault_description": data.fault_description,
             "ai_diagnostic_tip": ai_tip
         }
-        # FIX: Wrapped data inside brackets [] for new Supabase library standard syntax
+        # Fixed list formatting for modern library stability
         supabase.table("site_tickets").insert([db_record]).execute()
         return {"status": "success", "ai_diagnostic": ai_tip}
     except Exception as e:
@@ -56,7 +101,7 @@ def handle_sundry_service(data: SundryInput):
             "raw_whatsapp_text": data.raw_whatsapp_text,
             "structured_bom": ai_structured_bom
         }
-        # FIX: Wrapped data inside brackets [] for new Supabase library standard syntax
+        # Fixed list formatting for modern library stability
         supabase.table("sundry_orders").insert([db_record]).execute()
         return {"status": "success", "structured_list": ai_structured_bom}
     except Exception as e:
@@ -89,7 +134,7 @@ def handle_turnkey_panel_service(data: PanelInput):
             "raw_requirements": data.raw_requirements,
             "generated_specifications": panel_specs
         }
-        # FIX: Wrapped data inside brackets [] for new Supabase library standard syntax
+        # Fixed list formatting for modern library stability
         supabase.table("panel_designs").insert([db_record]).execute()
         return {"status": "success", "panel_blueprint": panel_specs}
     except Exception as e:
