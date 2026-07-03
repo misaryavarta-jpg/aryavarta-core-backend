@@ -4,9 +4,9 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from groq import Groq
-from supabase import create_client, Client
 
-app = FastAPI(title="Aryavarta Production System", redirect_slashes=False)
+# Initialize high-speed localized api framework
+app = FastAPI(title="Aryavarta High Speed Zero-Storage Engine", redirect_slashes=False)
 
 app.add_middleware(
     CORSMiddleware,
@@ -17,13 +17,7 @@ app.add_middleware(
 )
 
 GROQ_API_KEY = str(os.environ.get("GROQ_API_KEY", "")).strip()
-
-# Hardcoded project targets to bypass environmental state bugs
-SUPABASE_URL = "https://spmdcwhwqzaibhgdrzdx.supabase.co/rest/v1/"
-SUPABASE_KEY = "sb_publishable_CmlgLUpQtpqx_QRz2FFBvw_ce37QsKe"
-
 groq_client = Groq(api_key=GROQ_API_KEY)
-supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 PRODUCTION_MODEL = "llama-3.3-70b-versatile"
 
@@ -41,7 +35,7 @@ class PanelInput(BaseModel):
 
 @app.get("/")
 def home():
-    return {"status": "online"}
+    return {"status": "online", "mode": "direct_ai_response"}
 
 @app.post("/api/site-engineer")
 @app.post("/api/site-engineer/")
@@ -56,17 +50,10 @@ def handle_site_engineer_service(data: TicketInput):
             temperature=0.1
         )
         ai_tip = completion.choices[0].message.content
-
-        # BYPASS FIX: Uses native RPC functions instead of table URLs to bypass PGRST125 path blocks completely
-        supabase.rpc("add_site_ticket", {
-            "p_client_name": str(data.client_name),
-            "p_fault_description": str(data.fault_description),
-            "p_ai_diagnostic_tip": str(ai_tip)
-        }).execute()
-        
         return {"status": "success", "ai_diagnostic": ai_tip}
+        
     except Exception as e:
-        error_details = f"System Crash: {str(e)} | Trace: {traceback.format_exc()}"
+        error_details = f"AI Generation Crash: {str(e)} | Trace: {traceback.format_exc()}"
         raise HTTPException(status_code=400, detail=error_details)
 
 @app.post("/api/sundry-procurement")
@@ -82,17 +69,10 @@ def handle_sundry_service(data: SundryInput):
             temperature=0.0
         )
         ai_structured_bom = completion.choices[0].message.content
-
-        # BYPASS FIX: Uses native RPC functions instead of table URLs to bypass PGRST125 path blocks completely
-        supabase.rpc("add_sundry_order", {
-            "p_client_name": str(data.client_name),
-            "p_raw_whatsapp_text": str(data.raw_whatsapp_text),
-            "p_structured_bom": str(ai_structured_bom)
-        }).execute()
-        
         return {"status": "success", "structured_list": ai_structured_bom}
+        
     except Exception as e:
-        error_details = f"System Crash: {str(e)} | Trace: {traceback.format_exc()}"
+        error_details = f"AI Generation Crash: {str(e)} | Trace: {traceback.format_exc()}"
         raise HTTPException(status_code=400, detail=error_details)
 
 @app.post("/api/turnkey-panel")
@@ -108,15 +88,8 @@ def handle_turnkey_panel_service(data: PanelInput):
             temperature=0.2
         )
         panel_specs = completion.choices[0].message.content
-
-        # BYPASS FIX: Uses native RPC functions instead of table URLs to bypass PGRST125 path blocks completely
-        supabase.rpc("add_panel_design", {
-            "p_client_name": str(data.client_name),
-            "p_raw_requirements": str(data.raw_requirements),
-            "p_generated_specifications": str(panel_specs)
-        }).execute()
-        
         return {"status": "success", "panel_blueprint": panel_specs}
+        
     except Exception as e:
-        error_details = f"System Crash: {str(e)} | Trace: {traceback.format_exc()}"
+        error_details = f"AI Generation Crash: {str(e)} | Trace: {traceback.format_exc()}"
         raise HTTPException(status_code=400, detail=error_details)
