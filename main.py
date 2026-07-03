@@ -21,7 +21,7 @@ groq_client = Groq(api_key=GROQ_API_KEY)
 
 # CRITICAL DATABASE BYPASS CONNECTOR: Paste your exact database URI string from Step 2 here
 # Make sure your real database project password replaces [YOUR-PASSWORD-HERE]
-DB_CONNECTION_URI = "postgresql://postgres:[YOUR-PASSWORD]@db.spmdcwhwqzaibhgdrzdx.supabase.co:5432/postgres"
+DB_CONNECTION_URI = "postgresql://postgres:u+Tr6L_3,xp*pmT@db.spmdcwhwqzaibhgdrzdx.supabase.co:5432/postgres"
 
 PRODUCTION_MODEL = "llama-3.3-70b-versatile"
 
