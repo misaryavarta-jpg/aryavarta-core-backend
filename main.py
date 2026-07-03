@@ -20,8 +20,7 @@ app.add_middleware(
 GROQ_API_KEY = str(os.environ.get("GROQ_API_KEY", "")).strip()
 groq_client = Groq(api_key=GROQ_API_KEY)
 
-# FIXED: Fully URL-Encoded Connection String using port 6543
-# This fixes 'u+Tr6L_3,xp*pmT' breaking the URL syntax pattern
+# Fully URL-Encoded Connection String using port 6543
 RAW_URI = "postgresql://postgres.spmdcwhwqzaibhgdrzdx:u%2BTr6L_3%2Cxp%2ApmT@://supabase.com"
 DB_CONNECTION_URI = str(RAW_URI).strip()
 
@@ -55,7 +54,8 @@ def handle_site_engineer_service(data: TicketInput):
             model=PRODUCTION_MODEL,
             temperature=0.1
         )
-        ai_tip = completion.choices.message.content
+        # PERMANENT SYNTAX FIX: Explicitly extraction out of index [0] to protect against list errors
+        ai_tip = completion.choices[0].message.content
 
         # Native psycopg2 connection using strict string URI parameters
         conn = psycopg2.connect(dsn=DB_CONNECTION_URI)
@@ -83,7 +83,8 @@ def handle_sundry_service(data: SundryInput):
             model=PRODUCTION_MODEL,
             temperature=0.0
         )
-        ai_structured_bom = completion.choices.message.content
+        # PERMANENT SYNTAX FIX: Explicitly extraction out of index [0] to protect against list errors
+        ai_structured_bom = completion.choices[0].message.content
 
         conn = psycopg2.connect(dsn=DB_CONNECTION_URI)
         cursor = conn.cursor()
@@ -110,7 +111,8 @@ def handle_turnkey_panel_service(data: PanelInput):
             model=PRODUCTION_MODEL,
             temperature=0.2
         )
-        panel_specs = completion.choices.message.content
+        # PERMANENT SYNTAX FIX: Explicitly extraction out of index [0] to protect against list errors
+        panel_specs = completion.choices[0].message.content
 
         conn = psycopg2.connect(dsn=DB_CONNECTION_URI)
         cursor = conn.cursor()
