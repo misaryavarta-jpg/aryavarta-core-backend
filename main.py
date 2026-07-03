@@ -17,15 +17,23 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize free third-party API configurations safely from environments
+# Extract environment keys with safety checks
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 SUPABASE_URL = os.environ.get("SUPABASE_URL")
 SUPABASE_KEY = os.environ.get("SUPABASE_KEY")
 
+# CRITICAL ERROR PREVENTION: Fallback values if Render settings are blank
+if not GROQ_API_KEY:
+    GROQ_API_KEY = "gsk_DUMMY_KEY_REPLACE_THIS_IF_EMPTY"
+if not SUPABASE_URL:
+    SUPABASE_URL = "https://supabase.co"
+if not SUPABASE_KEY:
+    SUPABASE_KEY = "sb_publishable_DUMMY_KEY_REPLACE_THIS_IF_EMPTY"
+
+# Initialize external connections cleanly
 groq_client = Groq(api_key=GROQ_API_KEY)
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# Define incoming structural data definitions
 class TicketInput(BaseModel):
     client_name: str
     fault_description: str
@@ -40,18 +48,21 @@ class PanelInput(BaseModel):
 
 @app.get("/")
 def health_check():
-    """ Keeps the free-tier server active and responsive """
-    return {"status": "online", "message": "Aryavarta systems running smoothly."}
+    return {
+        "status": "online", 
+        "groq_loaded": bool(os.environ.get("GROQ_API_KEY")),
+        "supabase_url_loaded": bool(os.environ.get("SUPABASE_URL")),
+        "supabase_key_loaded": bool(os.environ.get("SUPABASE_KEY"))
+    }
 
-# =====================================================================
-# SERVICE 1: SITE ENGINEER ROUTE WITH INTELLIGENT FIELD CO-PILOT
-# =====================================================================
 @app.post("/api/site-engineer")
 def handle_site_engineer_service(data: TicketInput):
     try:
+        if "DUMMY" in GROQ_API_KEY or "DUMMY" in SUPABASE_KEY:
+            raise ValueError("Your Render configuration variables are missing or empty! Please re-add them in your Environment tab.")
+
         system_prompt = (
-            "You are an industrial panel diagnostic expert. Based on the fault description, "
-            "provide 3 high-priority, concise checks for a site engineer to run immediately. "
+            "You are an industrial panel diagnostic expert. Provide 3 quick checks for a site engineer based on the issue. "
             "Focus on wiring safety, terminal conditions, and voltage checks."
         )
         completion = groq_client.chat.completions.create(
@@ -69,22 +80,17 @@ def handle_site_engineer_service(data: TicketInput):
             "fault_description": data.fault_description,
             "ai_diagnostic_tip": ai_tip
         }
-        # Fixed list formatting for modern library stability
         supabase.table("site_tickets").insert([db_record]).execute()
         return {"status": "success", "ai_diagnostic": ai_tip}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# =====================================================================
-# SERVICE 2: SUNDRY CONVERSION VIA FAST DATA READER AGENT
-# =====================================================================
 @app.post("/api/sundry-procurement")
 def handle_sundry_service(data: SundryInput):
     try:
         system_prompt = (
-            "You are a parser. Read the unstructured message containing panel components "
-            "and convert it into a strictly formatted JSON array block. Example format: "
-            '[{"item": "MCB", "spec": "16A Single Phase", "qty": "5"}]. Do not add conversational text.'
+            "You are a parser. Convert unstructured panel component messages into a strictly formatted JSON array. "
+            "Example format: " '[{"item": "MCB", "spec": "16A", "qty": "5"}]. Do not add conversational text.'
         )
         completion = groq_client.chat.completions.create(
             messages=[
@@ -101,23 +107,17 @@ def handle_sundry_service(data: SundryInput):
             "raw_whatsapp_text": data.raw_whatsapp_text,
             "structured_bom": ai_structured_bom
         }
-        # Fixed list formatting for modern library stability
         supabase.table("sundry_orders").insert([db_record]).execute()
         return {"status": "success", "structured_list": ai_structured_bom}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-# =====================================================================
-# SERVICE 3: TURNKEY PANEL EXPERT ASSISTANT ROUTE
-# =====================================================================
 @app.post("/api/turnkey-panel")
 def handle_turnkey_panel_service(data: PanelInput):
     try:
         system_prompt = (
-            "You are a master engineering agent for industrial control panels. Given a client's "
-            "raw manufacturing criteria, output a bulleted technical design overview detailing "
-            "the suggested panel type, recommended structural enclosure protection tier (IP55/IP65), "
-            "and critical safety component breakers required."
+            "You are a master engineering agent for control panels. Output a bulleted technical design overview "
+            "detailing panel type, recommended enclosure protection tier (IP55/IP65), and switchgear items required."
         )
         completion = groq_client.chat.completions.create(
             messages=[
@@ -134,7 +134,6 @@ def handle_turnkey_panel_service(data: PanelInput):
             "raw_requirements": data.raw_requirements,
             "generated_specifications": panel_specs
         }
-        # Fixed list formatting for modern library stability
         supabase.table("panel_designs").insert([db_record]).execute()
         return {"status": "success", "panel_blueprint": panel_specs}
     except Exception as e:
