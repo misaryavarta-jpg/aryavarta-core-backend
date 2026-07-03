@@ -6,8 +6,7 @@ from pydantic import BaseModel
 from groq import Groq
 from supabase import create_client, Client
 
-# Initialize the central app framework with trailing slash redirection disabled
-app = FastAPI(title="Aryavarta Fixed Index Engine", redirect_slashes=False)
+app = FastAPI(title="Aryavarta Explicit Path Engine", redirect_slashes=False)
 
 app.add_middleware(
     CORSMiddleware,
@@ -42,9 +41,6 @@ class PanelInput(BaseModel):
 def home():
     return {"status": "online"}
 
-# =====================================================================
-# SERVICE 1: SITE ENGINEER ROUTE (MATCHES WITH & WITHOUT TRAILING SLASHES)
-# =====================================================================
 @app.post("/api/site-engineer")
 @app.post("/api/site-engineer/")
 def handle_site_engineer_service(data: TicketInput):
@@ -59,7 +55,8 @@ def handle_site_engineer_service(data: TicketInput):
         )
         ai_tip = completion.choices[0].message.content
 
-        supabase.table("site_tickets").insert([
+        # FIXED: Added explicit schema mapping override
+        supabase.schema("public").table("site_tickets").insert([
             {
                 "client_name": str(data.client_name),
                 "fault_description": str(data.fault_description),
@@ -72,9 +69,6 @@ def handle_site_engineer_service(data: TicketInput):
         error_details = f"System Crash: {str(e)} | Trace: {traceback.format_exc()}"
         raise HTTPException(status_code=400, detail=error_details)
 
-# =====================================================================
-# SERVICE 2: SUNDRY CONVERSION ROUTE (MATCHES WITH & WITHOUT TRAILING SLASHES)
-# =====================================================================
 @app.post("/api/sundry-procurement")
 @app.post("/api/sundry-procurement/")
 def handle_sundry_service(data: SundryInput):
@@ -89,7 +83,8 @@ def handle_sundry_service(data: SundryInput):
         )
         ai_structured_bom = completion.choices[0].message.content
 
-        supabase.table("sundry_orders").insert([
+        # FIXED: Added explicit schema mapping override
+        supabase.schema("public").table("sundry_orders").insert([
             {
                 "client_name": str(data.client_name),
                 "raw_whatsapp_text": str(data.raw_whatsapp_text),
@@ -102,9 +97,6 @@ def handle_sundry_service(data: SundryInput):
         error_details = f"System Crash: {str(e)} | Trace: {traceback.format_exc()}"
         raise HTTPException(status_code=400, detail=error_details)
 
-# =====================================================================
-# SERVICE 3: TURNKEY PANEL ROUTE (MATCHES WITH & WITHOUT TRAILING SLASHES)
-# =====================================================================
 @app.post("/api/turnkey-panel")
 @app.post("/api/turnkey-panel/")
 def handle_turnkey_panel_service(data: PanelInput):
@@ -119,7 +111,8 @@ def handle_turnkey_panel_service(data: PanelInput):
         )
         panel_specs = completion.choices[0].message.content
 
-        supabase.table("panel_designs").insert([
+        # FIXED: Added explicit schema mapping override
+        supabase.schema("public").table("panel_designs").insert([
             {
                 "client_name": str(data.client_name),
                 "raw_requirements": str(data.raw_requirements),
