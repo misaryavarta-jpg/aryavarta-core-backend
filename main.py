@@ -1,14 +1,13 @@
 import os
 import traceback
-import psycopg2
+import requests
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from groq import Groq
 
-app = FastAPI(title="Aryavarta Production System", redirect_slashes=False)
+app = FastAPI(title="Aryavarta Google Sheets Engine", redirect_slashes=False)
 
-# Inject high-security browser headers to pass firewalls cleanly
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,9 +19,8 @@ app.add_middleware(
 GROQ_API_KEY = str(os.environ.get("GROQ_API_KEY", "")).strip()
 groq_client = Groq(api_key=GROQ_API_KEY)
 
-# Fully URL-Encoded Connection String using port 6543
-RAW_URI = "postgresql://postgres.spmdcwhwqzaibhgdrzdx:u%2BTr6L_3%2Cxp%2ApmT@://supabase.com"
-DB_CONNECTION_URI = str(RAW_URI).strip()
+# PASTE YOUR GOOGLE APPS SCRIPT WEB APP URL LINK BETWEEN THE QUOTES
+GOOGLE_SHEET_WEBHOOK = "https://script.google.com/macros/s/AKfycbxZcBzUwmU42j7IxbdJKnjTBggMHpEfBiUeZRnRwnOM9LFYGveytTEwem2zD2NsgPHD/exec"
 
 PRODUCTION_MODEL = "llama-3.3-70b-versatile"
 
@@ -40,7 +38,7 @@ class PanelInput(BaseModel):
 
 @app.get("/")
 def home():
-    return {"status": "online", "mode": "raw_db_writing_active"}
+    return {"status": "online", "mode": "google_sheets_active"}
 
 @app.post("/api/site-engineer")
 @app.post("/api/site-engineer/")
@@ -54,21 +52,20 @@ def handle_site_engineer_service(data: TicketInput):
             model=PRODUCTION_MODEL,
             temperature=0.1
         )
-        # PERMANENT SYNTAX FIX: Explicitly extraction out of index [0] to protect against list errors
         ai_tip = completion.choices[0].message.content
 
-        # Native psycopg2 connection using strict string URI parameters
-        conn = psycopg2.connect(dsn=DB_CONNECTION_URI)
-        cursor = conn.cursor()
-        insert_query = "INSERT INTO public.site_tickets (client_name, fault_description, ai_diagnostic_tip) VALUES (%s, %s, %s);"
-        cursor.execute(insert_query, (str(data.client_name), str(data.fault_description), str(ai_tip)))
-        conn.commit()
-        cursor.close()
-        conn.close()
-
+        # Direct pipeline connection handoff straight into Google Sheets
+        payload = {
+            "service_type": "Site Engineer Service",
+            "client_name": str(data.client_name),
+            "input_text": str(data.fault_description),
+            "ai_output": str(ai_tip)
+        }
+        requests.post(GOOGLE_SHEET_WEBHOOK, json=payload)
+        
         return {"status": "success", "ai_diagnostic": ai_tip}
     except Exception as e:
-        error_details = f"Storage Engine Crash: {str(e)} | Trace: {traceback.format_exc()}"
+        error_details = f"Google Handoff Error: {str(e)} | Trace: {traceback.format_exc()}"
         raise HTTPException(status_code=400, detail=error_details)
 
 @app.post("/api/sundry-procurement")
@@ -83,20 +80,19 @@ def handle_sundry_service(data: SundryInput):
             model=PRODUCTION_MODEL,
             temperature=0.0
         )
-        # PERMANENT SYNTAX FIX: Explicitly extraction out of index [0] to protect against list errors
         ai_structured_bom = completion.choices[0].message.content
 
-        conn = psycopg2.connect(dsn=DB_CONNECTION_URI)
-        cursor = conn.cursor()
-        insert_query = "INSERT INTO public.sundry_orders (client_name, raw_whatsapp_text, structured_bom) VALUES (%s, %s, %s);"
-        cursor.execute(insert_query, (str(data.client_name), str(data.raw_whatsapp_text), str(ai_structured_bom)))
-        conn.commit()
-        cursor.close()
-        conn.close()
-
+        payload = {
+            "service_type": "Sundry Procurement Service",
+            "client_name": str(data.client_name),
+            "input_text": str(data.raw_whatsapp_text),
+            "ai_output": str(ai_structured_bom)
+        }
+        requests.post(GOOGLE_SHEET_WEBHOOK, json=payload)
+        
         return {"status": "success", "structured_list": ai_structured_bom}
     except Exception as e:
-        error_details = f"Storage Engine Crash: {str(e)} | Trace: {traceback.format_exc()}"
+        error_details = f"Google Handoff Error: {str(e)} | Trace: {traceback.format_exc()}"
         raise HTTPException(status_code=400, detail=error_details)
 
 @app.post("/api/turnkey-panel")
@@ -111,18 +107,17 @@ def handle_turnkey_panel_service(data: PanelInput):
             model=PRODUCTION_MODEL,
             temperature=0.2
         )
-        # PERMANENT SYNTAX FIX: Explicitly extraction out of index [0] to protect against list errors
         panel_specs = completion.choices[0].message.content
 
-        conn = psycopg2.connect(dsn=DB_CONNECTION_URI)
-        cursor = conn.cursor()
-        insert_query = "INSERT INTO public.panel_designs (client_name, raw_requirements, generated_specifications) VALUES (%s, %s, %s);"
-        cursor.execute(insert_query, (str(data.client_name), str(data.raw_requirements), str(panel_specs)))
-        conn.commit()
-        cursor.close()
-        conn.close()
-
+        payload = {
+            "service_type": "Turnkey Panel Service",
+            "client_name": str(data.client_name),
+            "input_text": str(data.raw_requirements),
+            "ai_output": str(panel_specs)
+        }
+        requests.post(GOOGLE_SHEET_WEBHOOK, json=payload)
+        
         return {"status": "success", "panel_blueprint": panel_specs}
     except Exception as e:
-        error_details = f"Storage Engine Crash: {str(e)} | Trace: {traceback.format_exc()}"
+        error_details = f"Google Handoff Error: {str(e)} | Trace: {traceback.format_exc()}"
         raise HTTPException(status_code=400, detail=error_details)
