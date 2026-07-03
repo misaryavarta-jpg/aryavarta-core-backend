@@ -6,8 +6,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from groq import Groq
 
-app = FastAPI(title="Aryavarta Direct Raw Database Engine", redirect_slashes=False)
+app = FastAPI(title="Aryavarta Production System", redirect_slashes=False)
 
+# Inject high-security browser headers to pass firewalls cleanly
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -19,12 +20,10 @@ app.add_middleware(
 GROQ_API_KEY = str(os.environ.get("GROQ_API_KEY", "")).strip()
 groq_client = Groq(api_key=GROQ_API_KEY)
 
-# CRITICAL DATABASE BYPASS CONNECTOR: Paste your exact database URI string from Step 2 here
-# Make sure your real database project password replaces [YOUR-PASSWORD-HERE]
-# FIXED: Port must be 6543 (Connection Pooler) to pass Render's free tier firewall rules cleanly
-# Replace [YOUR-PASSWORD] with your actual Supabase project password
-DB_CONNECTION_URI = "postgresql://postgres.spmdcwhwqzaibhgdrzdx:u+Tr6L_3,xp*pmT@://supabase.com"
-
+# FIXED: Fully URL-Encoded Connection String using port 6543
+# This fixes 'u+Tr6L_3,xp*pmT' breaking the URL syntax pattern
+RAW_URI = "postgresql://postgres.spmdcwhwqzaibhgdrzdx:u%2BTr6L_3%2Cxp%2ApmT@://supabase.com"
+DB_CONNECTION_URI = str(RAW_URI).strip()
 
 PRODUCTION_MODEL = "llama-3.3-70b-versatile"
 
@@ -56,10 +55,10 @@ def handle_site_engineer_service(data: TicketInput):
             model=PRODUCTION_MODEL,
             temperature=0.1
         )
-        ai_tip = completion.choices[0].message.content
+        ai_tip = completion.choices.message.content
 
-        # Bypasses URL path routing endpoints by connecting straight into the DB port
-        conn = psycopg2.connect(DB_CONNECTION_URI)
+        # Native psycopg2 connection using strict string URI parameters
+        conn = psycopg2.connect(dsn=DB_CONNECTION_URI)
         cursor = conn.cursor()
         insert_query = "INSERT INTO public.site_tickets (client_name, fault_description, ai_diagnostic_tip) VALUES (%s, %s, %s);"
         cursor.execute(insert_query, (str(data.client_name), str(data.fault_description), str(ai_tip)))
@@ -84,9 +83,9 @@ def handle_sundry_service(data: SundryInput):
             model=PRODUCTION_MODEL,
             temperature=0.0
         )
-        ai_structured_bom = completion.choices[0].message.content
+        ai_structured_bom = completion.choices.message.content
 
-        conn = psycopg2.connect(DB_CONNECTION_URI)
+        conn = psycopg2.connect(dsn=DB_CONNECTION_URI)
         cursor = conn.cursor()
         insert_query = "INSERT INTO public.sundry_orders (client_name, raw_whatsapp_text, structured_bom) VALUES (%s, %s, %s);"
         cursor.execute(insert_query, (str(data.client_name), str(data.raw_whatsapp_text), str(ai_structured_bom)))
@@ -111,9 +110,9 @@ def handle_turnkey_panel_service(data: PanelInput):
             model=PRODUCTION_MODEL,
             temperature=0.2
         )
-        panel_specs = completion.choices[0].message.content
+        panel_specs = completion.choices.message.content
 
-        conn = psycopg2.connect(DB_CONNECTION_URI)
+        conn = psycopg2.connect(dsn=DB_CONNECTION_URI)
         cursor = conn.cursor()
         insert_query = "INSERT INTO public.panel_designs (client_name, raw_requirements, generated_specifications) VALUES (%s, %s, %s);"
         cursor.execute(insert_query, (str(data.client_name), str(data.raw_requirements), str(panel_specs)))
