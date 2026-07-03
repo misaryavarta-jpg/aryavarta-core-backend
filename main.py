@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from groq import Groq
 from supabase import create_client, Client
 
-app = FastAPI(title="Aryavarta Production System", redirect_slashes=False)
+app = FastAPI(title="Aryavarta Direct Connect Engine", redirect_slashes=False)
 
 app.add_middleware(
     CORSMiddleware,
@@ -16,9 +16,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# 1. FETCH THE GROQ TOKEN FROM THE ENVIRONMENT
 GROQ_API_KEY = str(os.environ.get("GROQ_API_KEY", "")).strip()
-SUPABASE_URL = str(os.environ.get("SUPABASE_URL", "")).strip()
-SUPABASE_KEY = str(os.environ.get("SUPABASE_KEY", "")).strip()
+
+# 2. HARDCODE YOUR EXACT LIVE SUPABASE STRINGS TO BYPASS RENDER CACHE GLITCHES
+# Replace these string paths with your absolute keys from your Data API tab
+SUPABASE_URL = "https://spmdcwhwqzaibhgdrzdx.supabase.co/rest/v1/"
+SUPABASE_KEY = "sb_publishable_CmlgLUpQtpqx_QRz2FFBvw_ce37QsKe"
 
 groq_client = Groq(api_key=GROQ_API_KEY)
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
@@ -39,7 +43,7 @@ class PanelInput(BaseModel):
 
 @app.get("/")
 def home():
-    return {"status": "online"}
+    return {"status": "online", "database_target": SUPABASE_URL}
 
 @app.post("/api/site-engineer")
 @app.post("/api/site-engineer/")
@@ -55,7 +59,7 @@ def handle_site_engineer_service(data: TicketInput):
         )
         ai_tip = completion.choices[0].message.content
 
-        # Strict public string data row mapping insertion
+        # Direct table execution string mapping
         supabase.table("site_tickets").insert({
             "client_name": str(data.client_name),
             "fault_description": str(data.fault_description),
