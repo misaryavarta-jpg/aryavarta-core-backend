@@ -6,7 +6,8 @@ from pydantic import BaseModel
 from groq import Groq
 from supabase import create_client, Client
 
-app = FastAPI(title="Aryavarta Fixed Index Engine")
+# Initialize the central app framework with trailing slash redirection disabled
+app = FastAPI(title="Aryavarta Fixed Index Engine", redirect_slashes=False)
 
 app.add_middleware(
     CORSMiddleware,
@@ -41,7 +42,11 @@ class PanelInput(BaseModel):
 def home():
     return {"status": "online"}
 
+# =====================================================================
+# SERVICE 1: SITE ENGINEER ROUTE (MATCHES WITH & WITHOUT TRAILING SLASHES)
+# =====================================================================
 @app.post("/api/site-engineer")
+@app.post("/api/site-engineer/")
 def handle_site_engineer_service(data: TicketInput):
     try:
         completion = groq_client.chat.completions.create(
@@ -52,7 +57,6 @@ def handle_site_engineer_service(data: TicketInput):
             model=PRODUCTION_MODEL,
             temperature=0.1
         )
-        # CRITICAL FIX: Added index [0] to parse choices array correctly
         ai_tip = completion.choices[0].message.content
 
         supabase.table("site_tickets").insert([
@@ -64,12 +68,15 @@ def handle_site_engineer_service(data: TicketInput):
         ]).execute()
         
         return {"status": "success", "ai_diagnostic": ai_tip}
-
     except Exception as e:
         error_details = f"System Crash: {str(e)} | Trace: {traceback.format_exc()}"
         raise HTTPException(status_code=400, detail=error_details)
 
+# =====================================================================
+# SERVICE 2: SUNDRY CONVERSION ROUTE (MATCHES WITH & WITHOUT TRAILING SLASHES)
+# =====================================================================
 @app.post("/api/sundry-procurement")
+@app.post("/api/sundry-procurement/")
 def handle_sundry_service(data: SundryInput):
     try:
         completion = groq_client.chat.completions.create(
@@ -80,7 +87,6 @@ def handle_sundry_service(data: SundryInput):
             model=PRODUCTION_MODEL,
             temperature=0.0
         )
-        # CRITICAL FIX: Added index [0] to parse choices array correctly
         ai_structured_bom = completion.choices[0].message.content
 
         supabase.table("sundry_orders").insert([
@@ -96,7 +102,11 @@ def handle_sundry_service(data: SundryInput):
         error_details = f"System Crash: {str(e)} | Trace: {traceback.format_exc()}"
         raise HTTPException(status_code=400, detail=error_details)
 
+# =====================================================================
+# SERVICE 3: TURNKEY PANEL ROUTE (MATCHES WITH & WITHOUT TRAILING SLASHES)
+# =====================================================================
 @app.post("/api/turnkey-panel")
+@app.post("/api/turnkey-panel/")
 def handle_turnkey_panel_service(data: PanelInput):
     try:
         completion = groq_client.chat.completions.create(
@@ -107,7 +117,6 @@ def handle_turnkey_panel_service(data: PanelInput):
             model=PRODUCTION_MODEL,
             temperature=0.2
         )
-        # CRITICAL FIX: Added index [0] to parse choices array correctly
         panel_specs = completion.choices[0].message.content
 
         supabase.table("panel_designs").insert([
