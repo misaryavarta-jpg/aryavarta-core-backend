@@ -21,7 +21,7 @@ groq_client = Groq(api_key=GROQ_API_KEY)
 
 # ─── DATABASE LINK HOOK ───
 # Ensure your unique Google Web App URL string is pasted accurately here:
-GOOGLE_SHEET_WEBHOOK = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_URL_HERE"
+GOOGLE_SHEET_WEBHOOK = "https://script.google.com/macros/s/AKfycbxZcBzUwmU42j7IxbdJKnjTBggMHpEfBiUeZRnRwnOM9LFYGveytTEwem2zD2NsgPHD/exec"
 
 PRODUCTION_TEXT_MODEL = "llama-3.3-70b-versatile"
 PRODUCTION_VISION_MODEL = "llama-3.2-11b-vision-preview"
