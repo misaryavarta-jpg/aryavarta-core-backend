@@ -20,7 +20,7 @@ GROQ_API_KEY = str(os.environ.get("GROQ_API_KEY", "")).strip()
 groq_client = Groq(api_key=GROQ_API_KEY)
 
 # PASTE YOUR GOOGLE SCRIPT URL HERE
-GOOGLE_SHEET_WEBHOOK = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_URL_HERE"
+GOOGLE_SHEET_WEBHOOK = "https://script.google.com/macros/s/AKfycbxZcBzUwmU42j7IxbdJKnjTBggMHpEfBiUeZRnRwnOM9LFYGveytTEwem2zD2NsgPHD/exec"
 
 # UPDATED STABLE MODELS (No "Preview" versions)
 # Llama 3.1 70B is the current long-term stable text model
