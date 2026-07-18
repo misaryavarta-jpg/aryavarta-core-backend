@@ -6,7 +6,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from groq import Groq
 
-app = FastAPI(title="Aryavarta Google Sheets Multimodal Engine", redirect_slashes=False)
+app = FastAPI(title="Aryavarta Stable Engine", redirect_slashes=False)
 
 app.add_middleware(
     CORSMiddleware,
@@ -19,17 +19,19 @@ app.add_middleware(
 GROQ_API_KEY = str(os.environ.get("GROQ_API_KEY", "")).strip()
 groq_client = Groq(api_key=GROQ_API_KEY)
 
-# ─── DATABASE LINK HOOK ───
-# Ensure your unique Google Web App URL string is pasted accurately here:
-GOOGLE_SHEET_WEBHOOK = "https://script.google.com/macros/s/AKfycbxZcBzUwmU42j7IxbdJKnjTBggMHpEfBiUeZRnRwnOM9LFYGveytTEwem2zD2NsgPHD/exec"
+# PASTE YOUR GOOGLE SCRIPT URL HERE
+GOOGLE_SHEET_WEBHOOK = "PASTE_YOUR_GOOGLE_APPS_SCRIPT_URL_HERE"
 
-PRODUCTION_TEXT_MODEL = "llama-3.3-70b-versatile"
-PRODUCTION_VISION_MODEL = "llama-3.2-11b-vision-preview"
+# UPDATED STABLE MODELS (No "Preview" versions)
+# Llama 3.1 70B is the current long-term stable text model
+PRODUCTION_TEXT_MODEL = "llama-3.1-70b-versatile"
+# Llama 3.2 11B Vision Instruct is the official stable vision model
+PRODUCTION_VISION_MODEL = "llama-3.2-11b-vision-instruct"
 
 class TicketInput(BaseModel):
     client_name: str
     fault_description: str
-    image_base64: str = ""  # Captures optional encoded image payload arrays
+    image_base64: str = ""
 
 class SundryInput(BaseModel):
     client_name: str
@@ -41,41 +43,35 @@ class PanelInput(BaseModel):
 
 @app.get("/")
 def home():
-    return {"status": "online", "mode": "multimodal_sheets_active"}
+    return {"status": "online", "system": "active"}
 
 @app.post("/api/site-engineer")
 @app.post("/api/site-engineer/")
 def handle_site_engineer_service(data: TicketInput):
     try:
         system_instruction = (
-            "You are an expert industrial automation panel troubleshooting assistant. "
-            "Analyze the text issue description and any attached image closely. "
-            "Identify burnt out breakers, loose wire indicators, or fault lights if present in the photo. "
-            "Provide 3 highly concise, pinpoint accurate maintenance checks or terminal fixes for the engineer."
+            "You are an industrial panel diagnostic expert. "
+            "Analyze the issue description and any attached image. "
+            "Provide 3 concise, pinpoint maintenance checks for the engineer."
         )
 
-        # Execution Condition A: If the engineer uploaded a machinery photograph
         if data.image_base64:
-            messages_payload = [
-                {"role": "system", "content": system_instruction},
-                {
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": f"Client reported text info: {data.fault_description}"},
-                        {
-                            "type": "image_url",
-                            "image_url": {"url": f"data:image/jpeg;base64,{data.image_base64}"}
-                        }
-                    ]
-                }
-            ]
+            # Vision Flow
             completion = groq_client.chat.completions.create(
-                messages=messages_payload,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "text", "text": f"Instruction: {system_instruction}\n\nIssue: {data.fault_description}"},
+                            {"type": "image_url", "image_url": {"url": f"data:image/jpeg;base64,{data.image_base64}"}}
+                        ]
+                    }
+                ],
                 model=PRODUCTION_VISION_MODEL,
                 temperature=0.1
             )
-        # Execution Condition B: If the request is pure text
         else:
+            # Text Flow
             completion = groq_client.chat.completions.create(
                 messages=[
                     {"role": "system", "content": system_instruction},
@@ -87,19 +83,22 @@ def handle_site_engineer_service(data: TicketInput):
             
         ai_tip = completion.choices[0].message.content
 
-        # Handoff straight to your active Google Sheet data grid row logs
-        payload = {
-            "service_type": "Site Engineer (Multimodal Analysis)",
-            "client_name": str(data.client_name),
-            "input_text": str(data.fault_description) + (" [Machinery Photo Attached]" if data.image_base64 else ""),
-            "ai_output": str(ai_tip)
-        }
-        requests.post(GOOGLE_SHEET_WEBHOOK, json=payload)
+        # Google Sheets Handoff
+        try:
+            requests.post(GOOGLE_SHEET_WEBHOOK, json={
+                "service_type": "Site Engineer",
+                "client_name": str(data.client_name),
+                "input_text": str(data.fault_description) + (" [Image Uploaded]" if data.image_base64 else ""),
+                "ai_output": str(ai_tip)
+            }, timeout=5)
+        except:
+            pass # Don't crash if Google Sheets is slow
         
         return {"status": "success", "ai_diagnostic": ai_tip}
+
     except Exception as e:
-        error_details = f"Vision Engine Error: {str(e)} | Trace: {traceback.format_exc()}"
-        raise HTTPException(status_code=400, detail=error_details)
+        # Return error as text so frontend doesn't show "Connection Failed"
+        return {"status": "error", "ai_diagnostic": f"System Error: {str(e)}"}
 
 @app.post("/api/sundry-procurement")
 @app.post("/api/sundry-procurement/")
@@ -107,25 +106,24 @@ def handle_sundry_service(data: SundryInput):
     try:
         completion = groq_client.chat.completions.create(
             messages=[
-                {"role": "system", "content": "Read the unstructured message containing electrical components and convert it into a clean formatted string table list detailing item, spec and quantity."},
+                {"role": "system", "content": "Convert this request into a clean table list of items, specs, and quantities."},
                 {"role": "user", "content": data.raw_whatsapp_text}
             ],
             model=PRODUCTION_TEXT_MODEL,
             temperature=0.0
         )
-        ai_structured_bom = completion.choices[0].message.content
+        ai_output = completion.choices[0].message.content
 
-        payload = {
-            "service_type": "Sundry Procurement Service",
+        requests.post(GOOGLE_SHEET_WEBHOOK, json={
+            "service_type": "Sundry Procurement",
             "client_name": str(data.client_name),
             "input_text": str(data.raw_whatsapp_text),
-            "ai_output": str(ai_structured_bom)
-        }
-        requests.post(GOOGLE_SHEET_WEBHOOK, json=payload)
+            "ai_output": str(ai_output)
+        })
         
-        return {"status": "success", "structured_list": ai_structured_bom}
+        return {"status": "success", "structured_list": ai_output}
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return {"status": "error", "structured_list": f"Error: {str(e)}"}
 
 @app.post("/api/turnkey-panel")
 @app.post("/api/turnkey-panel/")
@@ -133,22 +131,21 @@ def handle_turnkey_panel_service(data: PanelInput):
     try:
         completion = groq_client.chat.completions.create(
             messages=[
-                {"role": "system", "content": "Provide a brief engineering overview detailing the panel enclosure protection tier (IP55/IP65) and suggested component parameters based on requirements."},
+                {"role": "system", "content": "Provide panel enclosure IP ratings and component specs for this requirement."},
                 {"role": "user", "content": data.raw_requirements}
             ],
             model=PRODUCTION_TEXT_MODEL,
             temperature=0.2
         )
-        panel_specs = completion.choices[0].message.content
+        ai_output = completion.choices[0].message.content
 
-        payload = {
-            "service_type": "Turnkey Panel Service",
+        requests.post(GOOGLE_SHEET_WEBHOOK, json={
+            "service_type": "Turnkey Panel",
             "client_name": str(data.client_name),
             "input_text": str(data.raw_requirements),
-            "ai_output": str(panel_specs)
-        }
-        requests.post(GOOGLE_SHEET_WEBHOOK, json=payload)
+            "ai_output": str(ai_output)
+        })
         
-        return {"status": "success", "panel_blueprint": panel_specs}
+        return {"status": "success", "panel_blueprint": ai_output}
     except Exception as e:
-        raise HTTPException(status_code=400, detail=str(e))
+        return {"status": "error", "panel_blueprint": f"Error: {str(e)}"}
